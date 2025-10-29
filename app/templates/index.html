@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class="mb-3">📝 待办事项</h1>
+
+<form action="{{ url_for('add') }}" method="post" class="row g-2 mb-3">
+  <div class="col-10">
+    <input class="form-control" name="title" placeholder="新增任务…" required>
+  </div>
+  <div class="col-2">
+    <button class="btn btn-primary w-100">添加</button>
+  </div>
+</form>
+
+<ul class="list-group">
+  {% for task in tasks %}
+  <li class="list-group-item d-flex justify-content-between align-items-center">
+    <div>
+      <form action="{{ url_for('toggle', task_id=task.id) }}" method="post" class="d-inline">
+        <button class="btn btn-sm btn-outline-success me-2">
+          {% if task.done %}✅{% else %}⭕{% endif %}
+        </button>
+      </form>
+      <span class="{{ 'text-decoration-line-through text-muted' if task.done }}">
+        {{ task.title }}
+      </span>
+    </div>
+    <form action="{{ url_for('delete', task_id=task.id) }}" method="post" class="d-inline">
+      <button class="btn btn-sm btn-outline-danger">删除</button>
+    </form>
+  </li>
+  {% else %}
+  <li class="list-group-item text-muted">暂无任务</li>
+  {% endfor %}
+</ul>
+{% endblock %}
