@@ -1,21 +1,59 @@
 {% extends 'base.html' %}
-{% block content %}
-<h1 class="mb-3">📝 待办事项</h1>
+{% from '_macros.html' import pagination_widget %}
 
-<form action="{{ url_for('add') }}" method="post" class="row g-2 mb-3">
-  <div class="col-10">
-    <input class="form-control" name="title" placeholder="新增任务…" required>
+{% block content %}
+<h1 class="mb-3">我的待办</h1>
+
+<!-- ① 搜索 + 优先级筛选 -->
+<form method="get" action="{{ url_for('main.index') }}" class="row g-2 mb-3">
+  <div class="col-4">
+    <input type="text" name="keyword" value="{{ keyword }}" class="form-control" placeholder="搜索标题">
+  </div>
+  <div class="col-3">
+    <select name="priority" class="form-select">
+      <option value="" {% if not priority %}selected{% endif %}>全部优先级</option>
+      <option value="1" {% if priority=='1' %}selected{% endif %}>高</option>
+      <option value="2" {% if priority=='2' %}selected{% endif %}>中</option>
+      <option value="3" {% if priority=='3' %}selected{% endif %}>低</option>
+    </select>
   </div>
   <div class="col-2">
+    <button type="submit" class="btn btn-outline-secondary w-100">搜索</button>
+  </div>
+  <div class="col-3">
+    <a class="btn btn-primary w-100" href="{{ url_for('main.index') }}">重置</a>
+  </div>
+</form>
+
+<!-- ② 新增任务（含优先级） -->
+<form method="post" action="{{ url_for('main.add') }}" class="row g-2 mb-3">
+  {{ form.hidden_tag() }}
+  <div class="col-6">
+    <input class="form-control" name="title" placeholder="新增任务…" required>
+  </div>
+  <div class="col-3">
+    <select class="form-select" name="priority">   <!-- ★ name 必须写 -->
+      <option value="1">高</option>
+      <option value="2" selected>中</option>
+      <option value="3">低</option>
+    </select>
+  </div>
+  <div class="col-3">
     <button class="btn btn-primary w-100">添加</button>
   </div>
 </form>
 
+<!-- ③ 任务列表 -->
 <ul class="list-group">
   {% for task in tasks %}
   <li class="list-group-item d-flex justify-content-between align-items-center">
     <div>
-      <form action="{{ url_for('toggle', task_id=task.id) }}" method="post" class="d-inline">
+      <!-- 优先级徽章 -->
+      <span class="badge bg-{% if task.priority==1 %}danger{% elif task.priority==2 %}warning{% else %}secondary{% endif %} me-2">
+        {% if task.priority==1 %}高{% elif task.priority==2 %}中{% else %}低{% endif %}
+      </span>
+
+      <form action="{{ url_for('main.toggle', task_id=task.id) }}" method="post" class="d-inline">
         <button class="btn btn-sm btn-outline-success me-2">
           {% if task.done %}✅{% else %}⭕{% endif %}
         </button>
@@ -24,7 +62,7 @@
         {{ task.title }}
       </span>
     </div>
-    <form action="{{ url_for('delete', task_id=task.id) }}" method="post" class="d-inline">
+    <form action="{{ url_for('main.delete', task_id=task.id) }}" method="post" class="d-inline">
       <button class="btn btn-sm btn-outline-danger">删除</button>
     </form>
   </li>
@@ -32,4 +70,7 @@
   <li class="list-group-item text-muted">暂无任务</li>
   {% endfor %}
 </ul>
+
+<!-- ④ 分页栏 -->
+{{ pagination_widget(pagination, 'main.index') }}
 {% endblock %}

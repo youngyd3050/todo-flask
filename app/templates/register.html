@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>注册</h2>
+
+<!-- ① 错误提示块 -->
+{% if form.errors %}
+  <div class="alert alert-danger">
+    <ul class="mb-0">
+      {% for field, errs in form.errors.items() %}
+        {% for e in errs %}
+          <li><strong>{{ form[field].label.text }}：</strong>{{ e }}</li>
+        {% endfor %}
+      {% endfor %}
+    </ul>
+  </div>
+{% endif %}
+
+<!-- ② 表单 -->
+<form method="post" action="{{ url_for('main.register') }}">
+  {{ form.hidden_tag() }}
+  <div class="mb-3">
+    {{ form.username.label(class='form-label') }}
+    {{ form.username(class='form-control') }}
+  </div>
+  <div class="mb-3">
+    {{ form.email.label(class='form-label') }}
+    {{ form.email(class='form-control') }}
+  </div>
+  <div class="mb-3">
+    {{ form.password.label(class='form-label') }}
+    {{ form.password(class='form-control') }}
+  </div>
+  <div class="mb-3">
+    {{ form.confirm.label(class='form-label') }}
+    {{ form.confirm(class='form-control') }}
+  </div>
+  {{ form.submit(class='btn btn-primary') }}
+</form>
+{% endblock %}
