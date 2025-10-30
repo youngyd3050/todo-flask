@@ -1,0 +1,8 @@
+__pycache__
+*.pyc
+.mypy_cache
+.git
+.env
+venv/
+instance/
+migrations/versions/*.py
