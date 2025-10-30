@@ -3,6 +3,10 @@ from flask_login import login_user, logout_user, login_required, current_user
 from . import db
 from .models import Task, User
 from .forms import RegistrationForm, LoginForm
+from flask import jsonify, request
+from datetime import datetime
+from .forms import TaskForm
+from .models import Task
 
 bp = Blueprint('main', __name__)
 
@@ -112,3 +116,78 @@ def delete(task_id):
     db.session.delete(task)
     db.session.commit()
     return redirect(url_for('main.index'))
+
+
+
+# ⑤ 弹出框新增
+@bp.route('/add_modal', methods=['POST'])
+@login_required
+def add_modal():
+    form = TaskForm()
+    if form.validate_on_submit():
+        task = Task(
+            title=form.title.data,
+            priority=form.priority.data,
+            description=form.description.data,
+            start_time=form.start_time.data,
+            end_time=form.end_time.data,
+            owner=current_user
+        )
+        db.session.add(task)
+        db.session.commit()
+        return jsonify({'ok': True})
+    return jsonify({'ok': False, 'errors': form.errors}), 400
+
+# ⑥ 编辑回显
+@bp.route('/edit/<int:task_id>')
+@login_required
+def edit_task(task_id):
+    task = Task.query.filter_by(id=task_id, owner=current_user).first_or_404()
+    return jsonify({
+        'id': task.id,
+        'title': task.title,
+        'priority': task.priority,
+        'description': task.description or '',
+        'start_time': task.start_time.strftime('%Y-%m-%dT%H:%M') if task.start_time else '',
+        'end_time': task.end_time.strftime('%Y-%m-%dT%H:%M') if task.end_time else ''
+    })
+
+# ⑦ 保存修改
+@bp.route('/update/<int:task_id>', methods=['POST'])
+@login_required
+def update_task(task_id):
+    task = Task.query.filter_by(id=task_id, owner=current_user).first_or_404()
+    form = TaskForm()
+    if form.validate_on_submit():
+        task.title = form.title.data
+        task.priority = form.priority.data
+        task.description = form.description.data
+        task.start_time = form.start_time.data
+        task.end_time = form.end_time.data
+        db.session.commit()
+        return jsonify({'ok': True})
+    return jsonify({'ok': False, 'errors': form.errors}), 400
+
+
+
+
+# 看板页面
+@bp.route('/kanban')
+@login_required
+def kanban():
+    todo  = Task.query.filter_by(owner=current_user, status=1).all()
+    doing = Task.query.filter_by(owner=current_user, status=2).all()
+    done  = Task.query.filter_by(owner=current_user, status=3).all()
+    return render_template('kanban.html', todo=todo, doing=doing, done=done)
+
+# 拖拽换列
+@bp.route('/move/<int:task_id>', methods=['POST'])
+@login_required
+def move_task(task_id):
+    task = Task.query.filter_by(id=task_id, owner=current_user).first_or_404()
+    new_status = request.json['status']
+    if new_status in (1, 2, 3):
+        task.status = new_status
+        db.session.commit()
+        return jsonify({'ok': True})
+    return jsonify({'ok': False}), 400

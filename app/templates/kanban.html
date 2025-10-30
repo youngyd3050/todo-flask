@@ -1,0 +1,111 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class="mb-3">看板</h1>
+<a class="btn btn-primary mb-3" href="{{ url_for('main.index') }}">返回列表</a>
+
+<div class="row g-3 kanban">
+  <!-- 未开始 -->
+  <div class="col-md-4">
+    <h5 class="text-center">未开始</h5>
+    <div class="list-group kanban-column" data-status="1">
+      {% for t in todo %}
+      <div class="list-group-item kanban-card" data-id="{{ t.id }}">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <span class="badge bg-{% if t.priority==1 %}danger{% elif t.priority==2 %}warning{% else %}secondary{% endif %} me-2">
+              {% if t.priority==1 %}高{% elif t.priority==2 %}中{% else %}低{% endif %}
+            </span>
+            <strong>{{ t.title }}</strong>
+          </div>
+          <button class="btn btn-sm btn-outline-secondary" onclick="editTask({{ t.id }})">✎</button>
+        </div>
+        {% if t.description %}
+          <div class="small text-muted mt-1">{{ t.description }}</div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- 进行中 -->
+  <div class="col-md-4">
+    <h5 class="text-center">进行中</h5>
+    <div class="list-group kanban-column" data-status="2">
+      {% for t in doing %}
+      <div class="list-group-item kanban-card" data-id="{{ t.id }}">
+        <!-- 同上结构 -->
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <span class="badge bg-{% if t.priority==1 %}danger{% elif t.priority==2 %}warning{% else %}secondary{% endif %} me-2">
+              {% if t.priority==1 %}高{% elif t.priority==2 %}中{% else %}低{% endif %}
+            </span>
+            <strong>{{ t.title }}</strong>
+          </div>
+          <button class="btn btn-sm btn-outline-secondary" onclick="editTask({{ t.id }})">✎</button>
+        </div>
+        {% if t.description %}
+          <div class="small text-muted mt-1">{{ t.description }}</div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- 已完成 -->
+  <div class="col-md-4">
+    <h5 class="text-center">已完成</h5>
+    <div class="list-group kanban-column" data-status="3">
+      {% for t in done %}
+      <div class="list-group-item kanban-card" data-id="{{ t.id }}">
+        <!-- 同上结构 -->
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <span class="badge bg-{% if t.priority==1 %}danger{% elif t.priority==2 %}warning{% else %}secondary{% endif %} me-2">
+              {% if t.priority==1 %}高{% elif t.priority==2 %}中{% else %}低{% endif %}
+            </span>
+            <strong>{{ t.title }}</strong>
+          </div>
+          <button class="btn btn-sm btn-outline-secondary" onclick="editTask({{ t.id }})">✎</button>
+        </div>
+        {% if t.description %}
+          <div class="small text-muted mt-1">{{ t.description }}</div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<!-- 通用编辑弹窗（复用前面模态框） -->
+{% include 'task_edit_modal.html' %}
+
+<!-- SortableJS CDN -->
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<script>
+  // 让三列可拖拽
+  document.querySelectorAll('.kanban-column').forEach(col => {
+    new Sortable(col, {
+      group: 'kanban',
+      animation: 150,
+      onEnd: function (evt) {
+        const card = evt.item;
+        const newStatus = evt.to.dataset.status;
+        const taskId = card.dataset.id;
+        fetch(`/move/${taskId}`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({status: parseInt(newStatus)})
+        }).then(r => r.json()).then(res => {
+          if (!res.ok) alert('移动失败');
+        });
+      }
+    });
+  });
+
+  // 双击卡片直接编辑（复用前面编辑函数）
+  function editTask(id) {
+    // 复用前面 index.html 里的 openEdit(id) 逻辑
+    openEdit(id);   // 已存在全局函数
+  }
+</script>
+{% endblock %}

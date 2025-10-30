@@ -4,7 +4,10 @@
 {% block content %}
 <h1 class="mb-3">我的待办</h1>
 
-<!-- ① 搜索 + 优先级筛选 -->
+<!-- ① 新增任务按钮 → 触发模态框 -->
+<button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#taskModal" onclick="openAdd()">新增任务</button>
+
+<!-- ② 搜索 + 优先级筛选 -->
 <form method="get" action="{{ url_for('main.index') }}" class="row g-2 mb-3">
   <div class="col-4">
     <input type="text" name="keyword" value="{{ keyword }}" class="form-control" placeholder="搜索标题">
@@ -25,25 +28,7 @@
   </div>
 </form>
 
-<!-- ② 新增任务（含优先级） -->
-<form method="post" action="{{ url_for('main.add') }}" class="row g-2 mb-3">
-  {{ form.hidden_tag() }}
-  <div class="col-6">
-    <input class="form-control" name="title" placeholder="新增任务…" required>
-  </div>
-  <div class="col-3">
-    <select class="form-select" name="priority">   <!-- ★ name 必须写 -->
-      <option value="1">高</option>
-      <option value="2" selected>中</option>
-      <option value="3">低</option>
-    </select>
-  </div>
-  <div class="col-3">
-    <button class="btn btn-primary w-100">添加</button>
-  </div>
-</form>
-
-<!-- ③ 任务列表 -->
+<!-- ③ 任务列表（含编辑按钮） -->
 <ul class="list-group">
   {% for task in tasks %}
   <li class="list-group-item d-flex justify-content-between align-items-center">
@@ -58,13 +43,23 @@
           {% if task.done %}✅{% else %}⭕{% endif %}
         </button>
       </form>
-      <span class="{{ 'text-decoration-line-through text-muted' if task.done }}">
-        {{ task.title }}
-      </span>
+      <strong>{{ task.title }}</strong>
+      {% if task.description %}
+        <br><small class="text-muted">{{ task.description }}</small>
+      {% endif %}
+      {% if task.start_time or task.end_time %}
+        <br><small class="text-muted">
+          {% if task.start_time %}开始：{{ task.start_time.strftime('%m-%d %H:%M') }}{% endif %}
+          {% if task.end_time %}结束：{{ task.end_time.strftime('%m-%d %H:%M') }}{% endif %}
+        </small>
+      {% endif %}
     </div>
-    <form action="{{ url_for('main.delete', task_id=task.id) }}" method="post" class="d-inline">
-      <button class="btn btn-sm btn-outline-danger">删除</button>
-    </form>
+    <div>
+      <button class="btn btn-sm btn-outline-secondary me-2" onclick="openEdit({{ task.id }})">编辑</button>
+      <form action="{{ url_for('main.delete', task_id=task.id) }}" method="post" class="d-inline">
+        <button class="btn btn-sm btn-outline-danger">删除</button>
+      </form>
+    </div>
   </li>
   {% else %}
   <li class="list-group-item text-muted">暂无任务</li>
@@ -73,4 +68,93 @@
 
 <!-- ④ 分页栏 -->
 {{ pagination_widget(pagination, 'main.index') }}
+
+<!-- ⑤ 通用模态框（新增/编辑共用） -->
+<div class="modal fade" id="taskModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form id="modalForm">
+          {{ form.hidden_tag() }}   <!-- 生成 csrf_token 等隐藏域 -->
+        <div class="modal-header">
+          <h5 class="modal-title" id="modalTitle">新增任务</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <!-- 任务名 -->
+  <div class="mb-3">
+    <label class="form-label">任务名</label>
+    <input type="text" class="form-control" name="title" required placeholder="请输入任务标题">
+  </div>
+          <!-- 优先级 -->
+  <div class="mb-3">
+    <label class="form-label">优先级</label>
+    <select class="form-select" name="priority">
+      <option value="1">高</option>
+      <option value="2" selected>中</option>
+      <option value="3">低</option>
+    </select>
+  </div>
+          <!-- 任务介绍 -->
+  <div class="mb-3">
+    <label class="form-label">任务介绍</label>
+    <textarea class="form-control" name="description" rows="3" placeholder="请输入任务详细描述"></textarea>
+  </div>
+          <!-- 时间行：自适应 -->
+  <div class="row g-3">
+    <div class="col-12 col-md-6">
+      <label class="form-label">开始时间</label>
+      <input type="datetime-local" class="form-control" name="start_time" placeholder="选择日期时间">
+    </div>
+    <div class="col-12 col-md-6">
+      <label class="form-label">结束时间</label>
+      <input type="datetime-local" class="form-control" name="end_time" placeholder="选择日期时间">
+    </div>
+  </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+          <button type="submit" class="btn btn-primary">保存</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ⑥ JS：打开新增/编辑 + 提交 -->
+<script>
+  let currentTaskId = null;
+
+  function openAdd() {
+    currentTaskId = null;
+    document.getElementById('modalTitle').textContent = '新增任务';
+    document.getElementById('modalForm').reset();
+  }
+
+  async function openEdit(id) {
+    currentTaskId = id;
+    document.getElementById('modalTitle').textContent = '编辑任务';
+    const res = await fetch(`/edit/${id}`);
+    const data = await res.json();
+    document.querySelector('[name=title]').value = data.title;
+    document.querySelector('[name=priority]').value = data.priority;
+    document.querySelector('[name=description]').value = data.description;
+<!--    document.querySelector('[name=start_time]').value = data.start_time;-->
+<!--    document.querySelector('[name=end_time]').value = data.end_time;-->
+    var modal = new bootstrap.Modal(document.getElementById('taskModal'));
+    modal.show();
+  }
+
+  document.getElementById('modalForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    const body = new FormData(this);
+    const url = currentTaskId ? `/update/${currentTaskId}` : '/add_modal';
+    const res = await fetch(url, { method: 'POST', body });
+    const result = await res.json();
+    if (result.ok) {
+      location.reload();          // 保存成功刷新页面
+    } else {
+      alert('保存失败\n' + JSON.stringify(result.errors));
+    }
+  });
+</script>
 {% endblock %}
